@@ -60,6 +60,11 @@ linear_model_path = Path(".", "model", "LinearRegression.pkl")
 with open(linear_model_path, 'rb') as fid:
     linear_model = pickle.load(fid)
 
+#finocgio Erweiterung RF
+rf_model_path = Path(".", "model", "RandomForestRegressor.pkl")
+with open(rf_model_path, "rb") as fid:
+    rf_model = pickle.load(fid)
+
 def din33466(uphill, downhill, distance):
     km = distance / 1000.0
     vertical = downhill / 500.0 + uphill / 300.0
@@ -138,25 +143,6 @@ app = Flask(__name__, static_url_path='/', static_folder='../frontend/build')
 def indexPage():
      return send_file("../frontend/build/index.html")  
 
-"""@app.route("/api/predict")
-def hello_world():
-    downhill = request.args.get('downhill', default = 0, type = int)
-    uphill = request.args.get('uphill', default = 0, type = int)
-    length = request.args.get('length', default = 0, type = int)
-
-    demoinput = [[downhill,uphill,length,0]]
-    demodf = pd.DataFrame(columns=['downhill', 'uphill', 'length_3d', 'max_elevation'], data=demoinput)
-    gradient_prediction = gradient_model.predict(demodf)[0]
-    linear_prediction = linear_model.predict(demodf)[0]
-
-    return jsonify({
-        'time': timedelta_minutes(gradient_prediction),
-        'linear': timedelta_minutes(linear_prediction),
-        'din33466': timedelta_minutes(din33466(uphill=uphill, downhill=downhill, distance=length)),
-        'sac': timedelta_minutes(sac(uphill=uphill, downhill=downhill, distance=length))
-        })
-"""
-
 @app.route("/api/predict")
 def hello_world():
     downhill = request.args.get("downhill", default=0, type=int)
@@ -171,6 +157,8 @@ def hello_world():
 
     gradient_prediction = gradient_model.predict(demodf)[0]
     linear_prediction = linear_model.predict(demodf)[0]
+    #finocgio Erweiterung RF Prediction
+    rf_prediction = rf_model.predict(demodf)[0]
 
     # NEU
     similar_hikes = find_similar_hikes(length, uphill, downhill)
@@ -181,6 +169,7 @@ def hello_world():
         {
             "time": timedelta_minutes(gradient_prediction),
             "linear": timedelta_minutes(linear_prediction),
+            "random_forest": timedelta_minutes(rf_prediction),
             "din33466": timedelta_minutes(
                 din33466(uphill=uphill, downhill=downhill, distance=length)
             ),
