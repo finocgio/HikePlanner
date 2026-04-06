@@ -38,8 +38,29 @@ similar dataset
 * uv venv .venv
 * uv sync
 
-## Ideas
+## Bonusthema
 
-* Personalized Model
-    * For a specific Hikr user
-    * z.B. 100 weitere "neue" Daten eines bestimmten Benutzers 
+Im Rahmen des zweiten Bonusthemas wurde die Applikation im Bereich **UI / Backend** erweitert. Neben der reinen Vorhersage der Wanderzeit zeigt die Anwendung nun zusätzlich **ähnliche reale Wanderungen** an.
+
+Dafür wurde das **Backend** so erweitert, dass bei jeder Anfrage an die Vorhersage-API zusätzlich passende Wanderrouten aus der bestehenden **Azure MongoDB** gesucht werden. Die Ähnlichkeit wird über einen einfachen **Similarity Score** berechnet. Dabei werden vor allem die Merkmale **Distanz**, **Aufstieg** und **Abstieg** berücksichtigt. Je kleiner der berechnete Score, desto ähnlicher ist eine gespeicherte Wanderung zur aktuellen Benutzereingabe.
+
+Die gefundenen Resultate werden anschliessend über die API an das **Frontend** übergeben und dort übersichtlich dargestellt. Benutzer erhalten dadurch nicht nur eine geschätzte Dauer, sondern auch konkrete Vergleichswerte aus realen Wanderdaten. Das verbessert die Nachvollziehbarkeit und den praktischen Nutzen der Anwendung.
+
+### Technische Umsetzung
+
+* Erweiterung des Flask-Backends um eine MongoDB-Abfrage auf der bestehenden `tracks`-Collection
+* Berechnung eines Similarity Scores auf Basis von:
+
+  * `length_3d`
+  * `uphill`
+  * `downhill`
+* Erweiterung des API-Endpunkts `/api/predict` um das Feld `similar_hikes`
+* Anpassung des Svelte-Frontends zur Darstellung der gefundenen ähnlichen Wanderungen in Tabellenform
+
+### Mehrwert
+
+* bessere Benutzerführung
+* realitätsnähere Einordnung der Vorhersage
+* sichtbare Erweiterung in **Backend und Frontend**
+* sinnvoller Einsatz der bereits vorhandenen MongoDB-Datenbasis
+
