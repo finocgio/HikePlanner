@@ -31,7 +31,11 @@ try:
     print(f"Using container: {container_name}")
     blob_service_client.create_container(container_name)
 
-    local_files = ["GradientBoostingRegressor.pkl", "LinearRegression.pkl"]
+    local_files = [
+    "GradientBoostingRegressor.pkl",
+    "LinearRegression.pkl",
+    "RandomForestRegressor.pkl",
+]
     for local_file_name in local_files:
         upload_file_path = os.path.join(".", local_file_name)
         # Create a blob client using the local file name as the name for the blob

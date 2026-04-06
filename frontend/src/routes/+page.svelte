@@ -13,6 +13,7 @@
 
     let prediction = "n.a.";
     let linearPrediction = "n.a.";
+    let randomForest = "n.a.";
     let din33466 = "n.a.";
     let sac = "n.a.";
 
@@ -37,6 +38,7 @@
         console.log(data);
         prediction = data.time;
         linearPrediction = data.linear;
+        randomForest = data.random_forest;
         din33466 = data.din33466;
         sac = data.sac;
         similarHikes = data.similar_hikes ?? []; //finocgio Erweiterung
@@ -179,6 +181,10 @@
                                 <tr>
                                     <th scope="row" class="text-muted">Model (Linear Regression)</th>
                                     <td class="fw-semibold">{linearPrediction}</td>
+                                </tr>
+                                <tr>
+                                    <th scope="row" class="text-muted">Model (Random Forest)</th>
+                                    <td class="fw-semibold">{randomForest}</td>
                                 </tr>
                                 <tr>
                                     <th scope="row" class="text-muted">DIN33466</th>
