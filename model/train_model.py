@@ -72,6 +72,8 @@ from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import Normalizer
+#finocgio Erweiterung Bonusthema Model/Training
+from sklearn.ensemble import RandomForestRegressor
 
 y = df.reset_index()['moving_time']
 x = df.reset_index()[['downhill', 'uphill', 'length_3d', 'max_elevation']]
@@ -79,28 +81,49 @@ x = df.reset_index()[['downhill', 'uphill', 'length_3d', 'max_elevation']]
 x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.20, random_state=42)
 
 # Baseline Linear Regression
+# Model training
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
+import datetime
+import pickle
+
+y = df.reset_index()["moving_time"]
+x = df.reset_index()[["downhill", "uphill", "length_3d", "max_elevation"]]
+
+x_train, x_test, y_train, y_test = train_test_split(
+    x, y, test_size=0.20, random_state=42
+)
+
+# Linear Regression
 lr = LinearRegression()
 lr.fit(x_train, y_train)
-
 y_pred_lr = lr.predict(x_test)
-r2 = r2_score(y_test, y_pred_lr)
-mse = mean_squared_error(y_test, y_pred_lr)
+lr_r2 = r2_score(y_test, y_pred_lr)
+lr_mse = mean_squared_error(y_test, y_pred_lr)
 
-# Mean Squared Error / R2
-print(f"\n{'*** Models ***':<30} {'R2':>10} {'MSE':>14}")
-print(f"{'Linear Regression':<30} {r2:>10.4f} {mse:>14.2f}")
-
-# GradientBoostingRegressor
-from sklearn.ensemble import GradientBoostingRegressor
-from sklearn.model_selection import train_test_split
-
+# Gradient Boosting Regressor
 gbr = GradientBoostingRegressor(n_estimators=50, random_state=9000)
 gbr.fit(x_train, y_train)
 y_pred_gbr = gbr.predict(x_test)
-r2 = r2_score(y_test, y_pred_gbr)
-mse = mean_squared_error(y_test, y_pred_gbr)
+gbr_r2 = r2_score(y_test, y_pred_gbr)
+gbr_mse = mean_squared_error(y_test, y_pred_gbr)
 
-print(f"{'Gradient Boosting Regressor':<30} {r2:>10.4f} {mse:>14.2f}")
+# Random Forest Regressor
+rf_model = RandomForestRegressor(n_estimators=100, random_state=42)
+rf_model.fit(x_train, y_train)
+y_pred_rf = rf_model.predict(x_test)
+rf_r2 = r2_score(y_test, y_pred_rf)
+rf_mse = mean_squared_error(y_test, y_pred_rf)
+
+print("\n*** Models ***")
+print(f"{'Model':<30} {'R2':>10} {'MSE':>14}")
+print("-" * 56)
+print(f"{'Linear Regression':<30} {lr_r2:>10.4f} {lr_mse:>14.2f}")
+print(f"{'Gradient Boosting Regressor':<30} {gbr_r2:>10.4f} {gbr_mse:>14.2f}")
+print(f"{'Random Forest Regressor':<30} {rf_r2:>10.4f} {rf_mse:>14.2f}")
+
 
 def din33466(uphill, downhill, distance):
     km = distance / 1000.0
@@ -108,9 +131,11 @@ def din33466(uphill, downhill, distance):
     horizontal = km / 4.0
     return 3600.0 * (min(vertical, horizontal) / 2 + max(vertical, horizontal))
 
+
 def sac(uphill, distance):
     km = distance / 1000.0
-    return 3600.0 * (uphill/400.0 + km /4.0)
+    return 3600.0 * (uphill / 400.0 + km / 4.0)
+
 
 print("\n*** Sample Values ***")
 samples = [
@@ -121,47 +146,46 @@ samples = [
     {"downhill": 100, "uphill": 250, "length_3d": 5000, "max_elevation": 1100},
 ]
 
-import datetime
-
 print(
     f"{'downhill':>8}  {'uphill':>6}  {'length_3d':>9}  {'max_elev':>8}  "
-    f"{'DIN33466':>8}  {'SAC':>8}  {'Linear':>8}  {'Gradient':>8}"
+    f"{'DIN33466':>8}  {'SAC':>8}  {'Linear':>8}  {'Gradient':>8}  {'RF':>8}"
 )
+
 for sample in samples:
     demodf = pd.DataFrame(
         [sample],
         columns=["downhill", "uphill", "length_3d", "max_elevation"],
     )
+
     time_lr = lr.predict(demodf)[0]
     time_gbr = gbr.predict(demodf)[0]
+    time_rf = rf_model.predict(demodf)[0]
+
     din = datetime.timedelta(
         seconds=din33466(
             sample["uphill"], sample["downhill"], sample["length_3d"]
         )
     )
     sac_time = datetime.timedelta(seconds=sac(sample["uphill"], sample["length_3d"]))
+
     din_str = str(din).rsplit(":", 1)[0]
     sac_str = str(sac_time).rsplit(":", 1)[0]
     lr_str = str(datetime.timedelta(seconds=time_lr)).rsplit(":", 1)[0]
     gbr_str = str(datetime.timedelta(seconds=time_gbr)).rsplit(":", 1)[0]
+    rf_str = str(datetime.timedelta(seconds=time_rf)).rsplit(":", 1)[0]
+
     print(
         f"{sample['downhill']:>8}  {sample['uphill']:>6}  "
         f"{sample['length_3d']:>9}  {sample['max_elevation']:>8}  "
-        f"{din_str:>8}  {sac_str:>8}  {lr_str:>8}  {gbr_str:>8}"
+        f"{din_str:>8}  {sac_str:>8}  {lr_str:>8}  {gbr_str:>8}  {rf_str:>8}"
     )
 
+# Save models
+with open("GradientBoostingRegressor.pkl", "wb") as f:
+    pickle.dump(gbr, f)
 
-# Save To Disk
-import pickle
+with open("LinearRegression.pkl", "wb") as f:
+    pickle.dump(lr, f)
 
-# save the classifier
-with open('GradientBoostingRegressor.pkl', 'wb') as fid:
-    pickle.dump(gbr, fid)    
-
-# save the linear model
-with open('LinearRegression.pkl', 'wb') as fid:
-    pickle.dump(lr, fid)
-
-# load it again
-with open('GradientBoostingRegressor.pkl', 'rb') as fid:
-    gbr_loaded = pickle.load(fid)
+with open("RandomForestRegressor.pkl", "wb") as f:
+    pickle.dump(rf_model, f)
