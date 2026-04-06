@@ -3,6 +3,8 @@ import os
 import pickle
 import shutil
 from pathlib import Path
+#finocgio Erweiterung
+from pymongo import MongoClient
 
 from dotenv import load_dotenv
 import pandas as pd
@@ -12,6 +14,8 @@ from flask_cors import CORS
 
 ENV_STORAGE_KEY = "AZURE_STORAGE_CONNECTION_STRING"
 MODEL_CONTAINER_PREFIX = "hikeplanner-model"
+#finocgio Erweiterung
+ENV_MONGO_KEY = "MONGO_DB_CONNECTION_STRING"
 
 # init app, load model from storage
 env_path = Path(__file__).resolve().parent.parent / ".env"
@@ -70,6 +74,61 @@ def timedelta_minutes(seconds):
     rounded_minutes = int(round(seconds / 60.0))
     return str(datetime.timedelta(minutes=rounded_minutes))
 
+#finocgio Erweiterung Funktion Hilfsfunktion
+def to_hike_response(doc, score):
+    return {
+        "title": doc.get("title") or doc.get("name") or doc.get("gpx_filename") or "Unbekannte Wanderung",
+        "length_3d": int(doc.get("length_3d", 0)),
+        "uphill": int(doc.get("uphill", 0)),
+        "downhill": int(doc.get("downhill", 0)),
+        "moving_time": timedelta_minutes(doc.get("moving_time", 0)),
+        "max_elevation": int(doc.get("max_elevation", 0)),
+        "score": round(score, 2),
+    }
+
+#finocgio Erweiterung Funktion Suchfunktion
+def find_similar_hikes(distance, uphill, downhill, limit=5):
+    if mongo_collection is None:
+        return []
+
+    query = {
+        "length_3d": {"$exists": True, "$ne": None},
+        "uphill": {"$exists": True, "$ne": None},
+        "downhill": {"$exists": True, "$ne": None},
+        "moving_time": {"$exists": True, "$ne": None},
+    }
+
+    candidates = list(
+        mongo_collection.find(
+            query,
+            {
+                "title": 1,
+                "name": 1,
+                "gpx_filename": 1,
+                "length_3d": 1,
+                "uphill": 1,
+                "downhill": 1,
+                "moving_time": 1,
+                "max_elevation": 1,
+            },
+        ).limit(1000)
+    )
+
+    hikes = []
+    for doc in candidates:
+        try:
+            score = (
+                abs(float(doc.get("length_3d", 0)) - distance)
+                + abs(float(doc.get("uphill", 0)) - uphill) * 5
+                + abs(float(doc.get("downhill", 0)) - downhill) * 5
+            )
+            hikes.append(to_hike_response(doc, score))
+        except Exception:
+            continue
+
+    hikes.sort(key=lambda x: x["score"])
+    return hikes[:limit]
+
 print("\n*** Flask Backend ***")
 app = Flask(__name__)
 cors = CORS(app)
@@ -79,7 +138,7 @@ app = Flask(__name__, static_url_path='/', static_folder='../frontend/build')
 def indexPage():
      return send_file("../frontend/build/index.html")  
 
-@app.route("/api/predict")
+"""@app.route("/api/predict")
 def hello_world():
     downhill = request.args.get('downhill', default = 0, type = int)
     uphill = request.args.get('uphill', default = 0, type = int)
@@ -96,3 +155,51 @@ def hello_world():
         'din33466': timedelta_minutes(din33466(uphill=uphill, downhill=downhill, distance=length)),
         'sac': timedelta_minutes(sac(uphill=uphill, downhill=downhill, distance=length))
         })
+"""
+
+@app.route("/api/predict")
+def hello_world():
+    downhill = request.args.get("downhill", default=0, type=int)
+    uphill = request.args.get("uphill", default=0, type=int)
+    length = request.args.get("length", default=0, type=int)
+
+    demoinput = [[downhill, uphill, length, 0]]
+    demodf = pd.DataFrame(
+        columns=["downhill", "uphill", "length_3d", "max_elevation"],
+        data=demoinput,
+    )
+
+    gradient_prediction = gradient_model.predict(demodf)[0]
+    linear_prediction = linear_model.predict(demodf)[0]
+
+    # NEU
+    similar_hikes = find_similar_hikes(length, uphill, downhill)
+    print("DEBUG: neue predict-route aktiv")
+    print("DEBUG similar_hikes count:", len(similar_hikes))
+
+    return jsonify(
+        {
+            "time": timedelta_minutes(gradient_prediction),
+            "linear": timedelta_minutes(linear_prediction),
+            "din33466": timedelta_minutes(
+                din33466(uphill=uphill, downhill=downhill, distance=length)
+            ),
+            "sac": timedelta_minutes(
+                sac(uphill=uphill, downhill=downhill, distance=length)
+            ),
+            "similar_hikes": similar_hikes,
+            "debug_test": "neu",
+        }
+    )
+
+#finocgio Erweiterung
+mongo_collection = None
+
+if ENV_MONGO_KEY in os.environ:
+    mongo_uri = os.environ[ENV_MONGO_KEY]
+    mongo_client = MongoClient(mongo_uri)
+    mongo_db = mongo_client["tracks"]
+    mongo_collection = mongo_db["tracks"]
+    print("*** MongoDB connection ready ***")
+else:
+    print("CANNOT ACCESS MONGODB - Please set MONGO_DB_CONNECTION_STRING.")

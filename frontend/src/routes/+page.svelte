@@ -16,6 +16,8 @@
     let din33466 = "n.a.";
     let sac = "n.a.";
 
+    let similarHikes = []; //finocgio Erweiterung
+
     let debounceId;
 
     async function predict() {
@@ -37,6 +39,7 @@
         linearPrediction = data.linear;
         din33466 = data.din33466;
         sac = data.sac;
+        similarHikes = data.similar_hikes ?? []; //finocgio Erweiterung
     }
 
     onMount(() => {
@@ -69,10 +72,11 @@
 
                     <form class="vstack gap-3" on:submit|preventDefault={predict}>
                         <div>
-                            <label class="form-label fw-semibold">Abwärts [m]</label>
+                            <label for="downhill" class="form-label fw-semibold">Abwärts [m]</label>
                             <div class="row g-2 align-items-center">
                                 <div class="col-4">
                                     <input
+                                        id="downhill"
                                         type="number"
                                         class="form-control"
                                         bind:value={downhill}
@@ -96,10 +100,11 @@
                         </div>
 
                         <div>
-                            <label class="form-label fw-semibold">Aufwärts [m]</label>
+                            <label for="uphill" class="form-label fw-semibold">Aufwärts [m]</label>
                             <div class="row g-2 align-items-center">
                                 <div class="col-4">
                                     <input
+                                        id="uphill"
                                         type="number"
                                         class="form-control"
                                         bind:value={uphill}
@@ -123,10 +128,11 @@
                         </div>
 
                         <div>
-                            <label class="form-label fw-semibold">Distanz [m]</label>
+                            <label for="length" class="form-label fw-semibold">Distanz [m]</label>
                             <div class="row g-2 align-items-center">
                                 <div class="col-4">
                                     <input
+                                        id="length"
                                         type="number"
                                         class="form-control"
                                         bind:value={length}
@@ -182,6 +188,42 @@
                                     <th scope="row" class="text-muted">SAC</th>
                                     <td class="fw-semibold">{sac}</td>
                                 </tr>
+                                <!-- finocgio Erweiterung von hier -->
+                            <hr class="my-4" />
+
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <h2 class="h5 mb-0 fw-semibold">Ähnliche Wanderungen</h2>
+</div>
+
+{#if similarHikes.length === 0}
+    <p class="text-muted mb-0">Keine ähnlichen Wanderungen gefunden.</p>
+{:else}
+    <div class="table-responsive">
+        <table class="table table-sm align-middle">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Distanz</th>
+                    <th>Aufstieg</th>
+                    <th>Abstieg</th>
+                    <th>Dauer</th>
+                </tr>
+            </thead>
+            <tbody>
+                {#each similarHikes as hike}
+                    <tr>
+                        <td>{hike.title}</td>
+                        <td>{hike.length_3d} m</td>
+                        <td>{hike.uphill} hm</td>
+                        <td>{hike.downhill} hm</td>
+                        <td>{hike.moving_time}</td>
+                    </tr>
+                {/each}
+            </tbody>
+        </table>
+    </div>
+{/if}
+                                <!--finocgio Erweiterung bis hier -->
                             </tbody>
                         </table>
                     </div>
